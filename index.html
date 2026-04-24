@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flavor Can</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap" rel="stylesheet">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Fredoka', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Sky gradient background ── */
+    #bg {
+      position: fixed; inset: 0; z-index: 0;
+      background: linear-gradient(175deg, #3aaccf 0%, #74cfe8 28%, #b8ebfa 58%, #d8f4fd 80%, #8ed4ea 100%);
+      transition: background 1.2s ease;
+    }
+
+    /* ── Bokeh bubbles ── */
+    #bokeh {
+      position: fixed; inset: 0; z-index: 1;
+      pointer-events: none; overflow: hidden;
+    }
+    .bb {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.25) 45%, transparent 70%);
+      animation: bb-rise linear infinite;
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    @keyframes bb-rise {
+      0%   { transform: translateY(0) scale(1);    opacity: 0;   }
+      8%   { opacity: 1; }
+      90%  { opacity: 0.5; }
+      100% { transform: translateY(-105vh) scale(1.08); opacity: 0; }
+    }
+
+    /* ── Top gloss sheen ── */
+    #sheen {
+      position: fixed; top: 0; left: 0; right: 0; height: 140px; z-index: 2;
+      background: linear-gradient(180deg, rgba(255,255,255,0.38) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    canvas {
+      display: block;
+      position: fixed; inset: 0; z-index: 3;
+    }
+
+    /* ── Brand ── */
+    #brand {
+      position: fixed; top: 30px; left: 42px; z-index: 10;
+      font-size: 30px; font-weight: 700; letter-spacing: 4px;
+      color: white;
+      text-transform: uppercase;
+      text-shadow: 0 2px 16px rgba(0,90,170,0.35), 0 0 40px rgba(255,255,255,0.5);
+      filter: drop-shadow(0 1px 0 rgba(255,255,255,0.6));
+    }
+
+    /* ── Drag hint ── */
+    #hint {
+      position: fixed; top: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
+      font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      text-shadow: 0 1px 6px rgba(0,70,140,0.3);
+      pointer-events: none;
+      transition: opacity 1.5s;
+    }
+    #hint.hide { opacity: 0; }
+
+    /* ── Flavor name panel (glass card) ── */
+    #flavor-display {
+      position: fixed; top: 50%; right: 44px;
+      transform: translateY(-50%);
+      z-index: 10; text-align: right;
+      background: rgba(255,255,255,0.22);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.55);
+      border-radius: 22px;
+      padding: 18px 26px 16px;
+      box-shadow:
+        0 8px 32px rgba(0,90,180,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.65),
+        inset 0 -1px 0 rgba(255,255,255,0.15);
+    }
+    #flavor-display .fd-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 3.5px;
+      text-transform: uppercase; color: rgba(255,255,255,0.75);
+      margin-bottom: 4px;
+    }
+    #flavor-display .fd-name {
+      font-size: 28px; font-weight: 700;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,70,150,0.25);
+      transition: opacity 0.2s, transform 0.3s;
+    }
+    #flavor-display .fd-name.flash { opacity: 0; transform: translateY(6px); }
+
+    /* ── Bottom UI ── */
+    #ui {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center;
+      padding-bottom: 38px; gap: 0;
+    }
+
+    /* Frosted glass pill */
+    #flavor-pill {
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 80px;
+      padding: 18px 36px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
+      box-shadow:
+        0 10px 40px rgba(0,90,180,0.14),
+        inset 0 1.5px 0 rgba(255,255,255,0.7),
+        inset 0 -1px 0 rgba(255,255,255,0.2);
+    }
+
+    #selector-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.8);
+      text-shadow: 0 1px 4px rgba(0,60,130,0.2);
+    }
+
+    #flavor-row { display: flex; gap: 20px; align-items: center; }
+
+    .flavor-blob {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Glossy bubble */
+    .blob-circle {
+      width: 52px; height: 52px; border-radius: 50%;
+      position: relative;
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+      will-change: transform;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1);
+    }
+    /* Glare highlight */
+    .blob-circle::after {
+      content: '';
+      position: absolute; top: 5px; left: 9px;
+      width: 60%; height: 38%;
+      background: radial-gradient(ellipse at 50% 10%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 100%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    /* Active ring */
+    .blob-circle::before {
+      content: '';
+      position: absolute; inset: -7px; border-radius: 50%;
+      border: 2.5px solid transparent;
+      transition: border-color 0.35s, box-shadow 0.35s;
+      z-index: 2;
+    }
+    .flavor-blob:hover .blob-circle { transform: scale(1.13) translateY(-3px); }
+    .flavor-blob.active .blob-circle { transform: scale(1.22) translateY(-4px); }
+    .flavor-blob.active .blob-circle::before {
+      border-color: rgba(255,255,255,0.9);
+      box-shadow: 0 0 16px var(--accent), 0 0 36px var(--accent-dim);
+    }
+
+    .blob-name {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      text-shadow: 0 1px 4px rgba(0,50,110,0.3);
+      transition: color 0.35s;
+    }
+    .flavor-blob.active .blob-name { color: white; }
+
+    /* ── Rotate toggle ── */
+    #rotate-toggle {
+      position: fixed; top: 20px; right: 20px; z-index: 50;
+      display: flex; align-items: center; gap: 9px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.22);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.55);
+      border-radius: 40px;
+      box-shadow: 0 4px 20px rgba(0,80,160,0.12), inset 0 1px 0 rgba(255,255,255,0.6);
+      cursor: pointer; font-family: 'Fredoka', sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+      color: white; text-transform: uppercase;
+      text-shadow: 0 1px 4px rgba(0,50,110,0.3);
+      transition: background 0.2s, box-shadow 0.2s;
+      user-select: none;
+    }
+    #rotate-toggle:hover {
+      background: rgba(255,255,255,0.34);
+      box-shadow: 0 6px 28px rgba(0,80,160,0.18), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .rt-icon { font-size: 16px; transition: opacity 0.25s; }
+
+    /* ── Loader ── */
+    #loader {
+      position: fixed; inset: 0; z-index: 100;
+      background: linear-gradient(175deg, #3aaccf 0%, #74cfe8 40%, #b8ebfa 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px; transition: opacity 0.8s;
+    }
+    #loader.done { opacity: 0; pointer-events: none; }
+    #loader-bar-wrap {
+      width: 200px; height: 4px;
+      background: rgba(255,255,255,0.25); border-radius: 2px; overflow: hidden;
+    }
+    #loader-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, rgba(255,255,255,0.6), white);
+      border-radius: 2px; transition: width 0.3s ease;
+    }
+    #loader-text {
+      font-size: 13px; letter-spacing: 5px; text-transform: uppercase;
+      color: white; font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,80,160,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="bg"></div>
+  <div id="bokeh"></div>
+  <div id="sheen"></div>
+  <canvas id="canvas"></canvas>
+
+  <div id="loader">
+    <div id="loader-text">Loading</div>
+    <div id="loader-bar-wrap"><div id="loader-bar"></div></div>
+  </div>
+
+  <button id="rotate-toggle" onclick="(function(){
+    const next = window._rotateMode === 'can' ? 'env' : 'can';
+    window._rotateMode = next;
+    window._setRotateMode(next);
+  })()">
+    <span class="rt-icon rt-icon-can">🥫</span>
+    <span class="rt-label">Rotate: Can</span>
+    <span class="rt-icon rt-icon-env" style="opacity:0.4">🌍</span>
+  </button>
+
+  <div id="brand">OBOL</div>
+  <div id="hint">Drag to rotate</div>
+
+  <div id="flavor-display">
+    <div class="fd-label">Flavor</div>
+    <div class="fd-name" id="fd-name">Original</div>
+  </div>
+
+  <div id="ui">
+    <div id="flavor-pill">
+      <div id="selector-label">Choose your flavor</div>
+      <div id="flavor-row"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader }     from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
+
+    /* ─────────────────────────────────────────────────────
+       FLAVOR DATA
+    ───────────────────────────────────────────────────── */
+    const FLAVORS = [
+      {
+        name: 'Original',
+        file: 'originalfull2.png',
+        accent: '#60c8e8',
+        accentDim: 'rgba(96,200,232,0.25)',
+        bg: 'linear-gradient(175deg, #3aaccf 0%, #74cfe8 28%, #b8ebfa 58%, #d8f4fd 80%, #8ed4ea 100%)',
+        light: 0x60b8e0,
+      },
+      {
+        name: 'Apple',
+        file: 'applefull2.png',
+        accent: '#52cc70',
+        accentDim: 'rgba(82,204,112,0.25)',
+        bg: 'linear-gradient(175deg, #2aaa52 0%, #60cc80 28%, #a8ecc0 58%, #ccf5d8 80%, #72cc90 100%)',
+        light: 0x40b858,
+      },
+      {
+        name: 'Orange',
+        file: 'orangefull2.png',
+        accent: '#f5a020',
+        accentDim: 'rgba(245,160,32,0.25)',
+        bg: 'linear-gradient(175deg, #e8881a 0%, #f5b040 28%, #fad888 58%, #fdeec8 80%, #f0b830 100%)',
+        light: 0xe09020,
+      },
+      {
+        name: 'Strawberry',
+        file: 'strawberryfull2.png',
+        accent: '#f05080',
+        accentDim: 'rgba(240,80,128,0.25)',
+        bg: 'linear-gradient(175deg, #d83868 0%, #ee7090 28%, #f8b0c4 58%, #fcd8e4 80%, #e86888 100%)',
+        light: 0xd84070,
+      },
+      {
+        name: 'Grape',
+        file: 'grapefull2.png',
+        accent: '#a060e0',
+        accentDim: 'rgba(160,96,224,0.25)',
+        bg: 'linear-gradient(175deg, #7030b8 0%, #a868d8 28%, #cca8ee 58%, #e0ccf8 80%, #9848c8 100%)',
+        light: 0x8840cc,
+      },
+      {
+        name: 'Glacier',
+        file: 'glacierfull2.png',
+        accent: '#90d8f8',
+        accentDim: 'rgba(144,216,248,0.25)',
+        bg: 'linear-gradient(175deg, #68c8f0 0%, #98dff8 28%, #c8f0ff 58%, #e8f8ff 80%, #a8e4f8 100%)',
+        light: 0x80d0f8,
+      },
+      {
+        name: 'Lemonade',
+        file: 'lemonadefull2.png',
+        accent: '#f0d020',
+        accentDim: 'rgba(240,208,32,0.25)',
+        bg: 'linear-gradient(175deg, #d8b800 0%, #f0d030 28%, #f8e878 58%, #fdf5b8 80%, #ecd020 100%)',
+        light: 0xe0c818,
+      },
+      {
+        name: 'Watermelon',
+        file: 'watermelonfull2.png',
+        accent: '#f04868',
+        accentDim: 'rgba(240,72,104,0.25)',
+        bg: 'linear-gradient(175deg, #c02848 0%, #e85870 28%, #f8a0b0 58%, #fcd4dc 80%, #e06078 100%)',
+        light: 0xd83858,
+      },
+    ];
+
+    /* ─────────────────────────────────────────────────────
+       RENDERER
+    ───────────────────────────────────────────────────── */
+    const canvas = document.getElementById('canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
+    /* ─────────────────────────────────────────────────────
+       SCENE + CAMERA
+    ───────────────────────────────────────────────────── */
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 80);
+    camera.position.set(0, 0.4, 7.5);
+
+    /* ─────────────────────────────────────────────────────
+       ORBIT CONTROLS (environment mode)
+    ───────────────────────────────────────────────────── */
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.055;
+    controls.enableZoom    = true;
+    controls.minDistance   = 3.5;
+    controls.maxDistance   = 14;
+    controls.enablePan     = false;
+    controls.enabled       = false; // start in can-rotate mode
+
+    /* ─────────────────────────────────────────────────────
+       ROTATION MODE TOGGLE
+    ───────────────────────────────────────────────────── */
+    let rotateMode = 'can'; // 'can' | 'env'
+
+    function setRotateMode(mode) {
+      rotateMode = mode;
+      controls.enabled = (mode === 'env');
+      if (mode === 'can') { velX = 0; velY = 0; }
+      const btn = document.getElementById('rotate-toggle');
+      if (btn) {
+        btn.querySelector('.rt-label').textContent =
+          mode === 'can' ? 'Rotate: Can' : 'Rotate: Scene';
+        btn.querySelector('.rt-icon-can').style.opacity = mode === 'can' ? '1' : '0.4';
+        btn.querySelector('.rt-icon-env').style.opacity = mode === 'env' ? '1' : '0.4';
+      }
+    }
+    window._rotateMode    = 'can';
+    window._setRotateMode = setRotateMode;
+
+    /* ─────────────────────────────────────────────────────
+       DRAG-TO-ROTATE CAN (camera stays fixed)
+    ───────────────────────────────────────────────────── */
+    let isDragging    = false;
+    let lastPX = 0, lastPY = 0;
+    let velX = 0,   velY = 0;
+    let userInteracted = false;
+
+    const DRAG_SCALE = 0.007;
+    const DAMPING    = 0.88;
+    const AUTO_SPIN  = 0.004;
+    const MAX_TILT   = Math.PI / 4;
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (rotateMode === 'can') {
+        isDragging = true;
+        lastPX = e.clientX; lastPY = e.clientY;
+        velX = 0; velY = 0;
+      }
+      if (!userInteracted) {
+        userInteracted = true;
+        document.getElementById('hint').classList.add('hide');
+      }
+    });
+
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (rotateMode !== 'can' || !isDragging || !canGroup) return;
+      const dx = e.clientX - lastPX;
+      const dy = e.clientY - lastPY;
+      lastPX = e.clientX; lastPY = e.clientY;
+      velX = dx * DRAG_SCALE;
+      velY = dy * DRAG_SCALE;
+      canGroup.rotation.y += velX;
+      canGroup.rotation.x = Math.max(-MAX_TILT, Math.min(MAX_TILT, canGroup.rotation.x + velY));
+    });
+
+    window.addEventListener('pointerup',     () => { isDragging = false; });
+    window.addEventListener('pointercancel', () => { isDragging = false; });
+
+    renderer.domElement.addEventListener('wheel', (e) => {
+      if (rotateMode === 'can') {
+        camera.position.z = Math.max(3.5, Math.min(14, camera.position.z + e.deltaY * 0.01));
+      }
+    }, { passive: true });
+
+    /* ─────────────────────────────────────────────────────
+       LIGHTS
+    ───────────────────────────────────────────────────── */
+    const ambientLight = new THREE.AmbientLight(0xd0eeff, 1.1);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
+    keyLight.position.set(4, 6, 5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 30;
+    keyLight.shadow.camera.left = -5;
+    keyLight.shadow.camera.right = 5;
+    keyLight.shadow.camera.top = 5;
+    keyLight.shadow.camera.bottom = -5;
+    scene.add(keyLight);
+
+    const skyLight = new THREE.DirectionalLight(0x88ccff, 1.2);
+    skyLight.position.set(-3, 8, 2);
+    scene.add(skyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xaaddff, 0.9);
+    fillLight.position.set(-5, 2, 3);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    rimLight.position.set(0, -3, -5);
+    scene.add(rimLight);
+
+    const topLight = new THREE.PointLight(0xffffff, 1.4, 20);
+    topLight.position.set(0, 7, 2);
+    scene.add(topLight);
+
+    const accentLight = new THREE.PointLight(0x60b8e0, 1.6, 22);
+    accentLight.position.set(-3, 1, 3);
+    scene.add(accentLight);
+
+    /* ─────────────────────────────────────────────────────
+       LOADING COORDINATOR  (textures + GLB, 6 total)
+    ───────────────────────────────────────────────────── */
+    const TOTAL_LOADS = FLAVORS.length + 1;
+    let   loadsDone   = 0;
+
+    function onAssetLoaded() {
+      loadsDone++;
+      document.getElementById('loader-bar').style.width =
+        Math.round((loadsDone / TOTAL_LOADS) * 100) + '%';
+      if (loadsDone === TOTAL_LOADS) {
+        setTimeout(() => {
+          document.getElementById('loader').classList.add('done');
+          setTimeout(() => document.getElementById('loader').remove(), 900);
+        }, 300);
+        initScene();
+      }
+    }
+
+    // ── Textures ──
+    const texLoader = new THREE.TextureLoader();
+    const textures  = new Array(FLAVORS.length).fill(null);
+
+    FLAVORS.forEach((f, i) => {
+      texLoader.load(f.file,
+        tex => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.flipY = false;   // GLTF UVs expect flipY=false
+          textures[i] = tex;
+          onAssetLoaded();
+        },
+        undefined,
+        ()  => { console.warn('Could not load', f.file); onAssetLoaded(); }
+      );
+    });
+
+    // ── GLB model ──
+    let canGroup  = null;
+    let labelMats = [];   // all material slots that receive the flavor texture
+
+    const gltfLoader = new GLTFLoader();
+    let   loadedGltf  = null;
+
+    gltfLoader.load(
+      'aluminium_can-_350ml.glb',
+      gltf => { loadedGltf = gltf; onAssetLoaded(); },
+      undefined,
+      err => { console.error('GLB load failed:', err); onAssetLoaded(); }
+    );
+
+    /* ─────────────────────────────────────────────────────
+       GRASS MODEL
+    ───────────────────────────────────────────────────── */
+    let grassLoaded = false;
+    let grassMats   = [];   // collected grass materials for tinting
+
+    function loadGrass(canBottomY) {
+      if (grassLoaded) return;
+      grassLoaded = true;
+
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load(
+        'hand_painted_garden.glb',
+        (gltf) => {
+          const grass = gltf.scene;
+
+          grass.traverse(child => {
+            if (!child.isMesh) return;
+            child.receiveShadow = true;
+            child.castShadow    = false;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach(m => { if (m) grassMats.push(m); });
+          });
+
+          // Scale to ~70 units wide
+          const box  = new THREE.Box3().setFromObject(grass);
+          const size = box.getSize(new THREE.Vector3());
+          const s    = 70 / Math.max(size.x, size.z);
+          grass.scale.setScalar(s);
+
+          // Align top of grass to can bottom, sink can in 0.6 units
+          box.setFromObject(grass);
+          grass.position.y = canBottomY - box.max.y + 14;
+
+          scene.add(grass);
+        },
+        undefined,
+        (err) => console.warn('Grass GLB load failed:', err)
+      );
+    }
+
+    /* ─────────────────────────────────────────────────────
+       EASING FUNCTIONS
+    ───────────────────────────────────────────────────── */
+    function easeInQuart(t) {
+      return t * t * t * t;
+    }
+
+    function easeOutElastic(t) {
+      if (t <= 0) return 0;
+      if (t >= 1) return 1;
+      const c4 = (2 * Math.PI) / 2.6;
+      return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.78) * c4) + 1;
+    }
+
+    /* ─────────────────────────────────────────────────────
+       ANIMATION STATE MACHINE
+    ───────────────────────────────────────────────────── */
+    let animPhase   = 'idle';  // 'squash' | 'stretch' | 'idle'
+    let animStart   = 0;
+    let animDur     = 0;
+    let pendingIdx  = -1;
+    let currentIdx  = 0;
+
+    function startSwitch(idx) {
+      if (animPhase !== 'idle' || idx === currentIdx) return;
+      pendingIdx = idx;
+      animPhase  = 'squash';
+      animStart  = performance.now();
+      animDur    = 310;
+    }
+
+    function applyFlavor(idx) {
+      const f = FLAVORS[idx];
+
+      // Swap label texture on all collected label material slots
+      for (const mat of labelMats) {
+        mat.map = textures[idx];
+        mat.needsUpdate = true;
+      }
+
+      // Background
+      document.getElementById('bg').style.background = f.bg;
+
+      // Accent light color
+      accentLight.color.set(f.light);
+
+      // Flavor name display
+      const fdName = document.getElementById('fd-name');
+      fdName.classList.add('flash');
+      setTimeout(() => {
+        fdName.textContent = f.name;
+        fdName.classList.remove('flash');
+      }, 180);
+
+      // Blob active state
+      document.querySelectorAll('.flavor-blob').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+      });
+
+      // Flavor pill tint matches active flavor
+      const pill = document.getElementById('flavor-pill');
+      if (pill) {
+        pill.style.background = f.accentDim.replace(/[\d.]+\)$/, '0.35)');
+        pill.style.borderColor = f.accent + '88';
+        pill.style.boxShadow = `0 10px 40px ${f.accentDim}, inset 0 1.5px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(255,255,255,0.2)`;
+      }
+
+      // Tint grass to flavor color (subtle, keeps painted look)
+      const tint = new THREE.Color(f.accent);
+      grassMats.forEach(m => {
+        m.color.set(tint);
+        m.needsUpdate = true;
+      });
+
+      // Flavor display card tint
+      const display = document.getElementById('flavor-display');
+      if (display) {
+        display.style.background = f.accentDim.replace(/[\d.]+\)$/, '0.35)');
+        display.style.borderColor = f.accent + '88';
+        display.style.boxShadow = `0 8px 32px ${f.accentDim}, inset 0 1px 0 rgba(255,255,255,0.65), inset 0 -1px 0 rgba(255,255,255,0.15)`;
+      }
+
+      currentIdx = idx;
+    }
+
+    function tickAnimation() {
+      if (!canGroup || animPhase === 'idle') return;
+
+      const elapsed = performance.now() - animStart;
+      const raw = Math.min(elapsed / animDur, 1);
+
+      if (animPhase === 'squash') {
+        // Squash: y collapses, x/z bulge outward  ← blob squish
+        const t = easeInQuart(raw);
+        canGroup.scale.y = 1 - 0.93 * t;
+        canGroup.scale.x = 1 + 0.30 * t;
+        canGroup.scale.z = 1 + 0.30 * t;
+        canGroup.position.y = -0.25 * t;  // sink slightly
+
+        if (raw >= 1) {
+          // Swap at minimum size
+          applyFlavor(pendingIdx);
+          animPhase = 'stretch';
+          animStart = performance.now();
+          animDur   = 700;
+        }
+      } else if (animPhase === 'stretch') {
+        // Elastic spring back with overshoot bounce
+        const t = easeOutElastic(raw);
+        canGroup.scale.y = 0.07 + 0.93 * t;
+        canGroup.scale.x = 1.30 - 0.30 * t;
+        canGroup.scale.z = 1.30 - 0.30 * t;
+        canGroup.position.y = -0.25 * (1 - t);
+
+        if (raw >= 1) {
+          canGroup.scale.set(1, 1, 1);
+          canGroup.position.y = 0;
+          animPhase = 'idle';
+        }
+      }
+    }
+
+    /* ─────────────────────────────────────────────────────
+       BUILD UI BLOBS
+    ───────────────────────────────────────────────────── */
+    function buildUI() {
+      const row = document.getElementById('flavor-row');
+      FLAVORS.forEach((f, i) => {
+        const blob = document.createElement('div');
+        blob.className = 'flavor-blob' + (i === 0 ? ' active' : '');
+        blob.style.setProperty('--accent', f.accent);
+        blob.style.setProperty('--accent-dim', f.accentDim);
+
+        const circle = document.createElement('div');
+        circle.className = 'blob-circle';
+        circle.style.cssText = `background:${f.accent}; box-shadow: 0 4px 22px ${f.accentDim};`;
+
+        const name = document.createElement('div');
+        name.className = 'blob-name';
+        name.textContent = f.name;
+
+        blob.append(circle, name);
+        blob.addEventListener('click', () => startSwitch(i));
+        row.appendChild(blob);
+      });
+    }
+
+    /* ─────────────────────────────────────────────────────
+       INIT + LOOP
+    ───────────────────────────────────────────────────── */
+    function initScene() {
+      canGroup = new THREE.Group();
+
+      if (loadedGltf) {
+        const model = loadedGltf.scene;
+
+        // ── Normalize scale so can is ~3.5 units tall ──
+        const box  = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const s    = 3.5 / size.y;
+        model.scale.setScalar(s);
+
+        // ── Re-center to origin ──
+        box.setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+
+        // ── Apply materials to all meshes ──
+        labelMats = [];
+
+        model.traverse(obj => {
+          if (!obj.isMesh) return;
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+
+          // Leave Object_6 and Object_8 with their original model material
+          if (obj.name !== 'Object_4') return;
+
+          // ── Object_4: split into label cylinder + metallic shoulders ──
+          const geo   = obj.geometry;
+          const pos   = geo.attributes.position;
+          const idxBuf = geo.index;
+          const vCount = pos.count;
+
+          // Per-vertex radius from Y axis
+          const radii = new Float32Array(vCount);
+          let maxR = 0;
+          for (let i = 0; i < vCount; i++) {
+            const r = Math.sqrt(pos.getX(i) ** 2 + pos.getZ(i) ** 2);
+            radii[i] = r;
+            if (r > maxR) maxR = r;
+          }
+          const threshold = maxR * 0.97; // straight cylinder vs taper
+
+          // Y range of the label (straight) section only
+          let labelMinY = Infinity, labelMaxY = -Infinity;
+          for (let i = 0; i < vCount; i++) {
+            if (radii[i] >= threshold) {
+              const y = pos.getY(i);
+              if (y < labelMinY) labelMinY = y;
+              if (y > labelMaxY) labelMaxY = y;
+            }
+          }
+          const labelH = labelMaxY - labelMinY || 1;
+
+          // Cylindrical UVs — V spans only the straight section, flipped right-way up
+          const uvs = new Float32Array(vCount * 2);
+          for (let i = 0; i < vCount; i++) {
+            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+            uvs[i * 2]     = 1 - (Math.atan2(z, x) / (Math.PI * 2) + 0.5); // flipped U
+            uvs[i * 2 + 1] = 1 - (y - labelMinY) / labelH; // flipped V
+          }
+          geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+          // Sort triangles: label faces first, metal faces second
+          const labelIdx = [], metalIdx = [];
+          if (idxBuf) {
+            for (let i = 0; i < idxBuf.count; i += 3) {
+              const a = idxBuf.getX(i), b = idxBuf.getX(i+1), c = idxBuf.getX(i+2);
+              const avgR = (radii[a] + radii[b] + radii[c]) / 3;
+              (avgR >= threshold ? labelIdx : metalIdx).push(a, b, c);
+            }
+          }
+
+          const combined = new Uint32Array(labelIdx.length + metalIdx.length);
+          combined.set(labelIdx, 0);
+          combined.set(metalIdx, labelIdx.length);
+          geo.setIndex(new THREE.BufferAttribute(combined, 1));
+          geo.clearGroups();
+          geo.addGroup(0,                labelIdx.length, 0); // label
+          geo.addGroup(labelIdx.length,  metalIdx.length, 1); // metal
+
+          const originalMat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+          const lMat = new THREE.MeshStandardMaterial({
+            map:       textures[0],
+            metalness: 0.2,
+            roughness: 0.45,
+          });
+          obj.material = [lMat, originalMat];
+          labelMats.push(lMat);
+        });
+
+        canGroup.add(model);
+
+        // Position grass at the can's bottom
+        const finalBox = new THREE.Box3().setFromObject(canGroup);
+        loadGrass(finalBox.min.y);
+      } else {
+        loadGrass(-1.75);
+      }
+
+      scene.add(canGroup);
+      applyFlavor(0);
+      buildUI();
+      renderer.setAnimationLoop(renderLoop);
+    }
+
+    function renderLoop() {
+      if (canGroup) {
+        if (rotateMode === 'can') {
+          if (!isDragging) {
+            if (!userInteracted) {
+              canGroup.rotation.y += AUTO_SPIN;
+            } else {
+              velX *= DAMPING;
+              velY *= DAMPING;
+              canGroup.rotation.y += velX;
+              canGroup.rotation.x = Math.max(-MAX_TILT, Math.min(MAX_TILT, canGroup.rotation.x + velY));
+            }
+          }
+        } else {
+          controls.update();
+        }
+      } else {
+        controls.update();
+      }
+      tickAnimation();
+      renderer.render(scene, camera);
+    }
+
+    /* ─────────────────────────────────────────────────────
+       BOKEH BUBBLES
+    ───────────────────────────────────────────────────── */
+    (function spawnBokeh() {
+      const container = document.getElementById('bokeh');
+      function spawn() {
+        const el  = document.createElement('div');
+        el.className = 'bb';
+        const size = 18 + Math.random() * 70;
+        const dur  = 8 + Math.random() * 14;
+        const delay = Math.random() * 6;
+        el.style.cssText = `
+          width:${size}px; height:${size}px;
+          left:${Math.random() * 100}%;
+          bottom:-${size}px;
+          animation-duration:${dur}s;
+          animation-delay:${delay}s;
+          opacity:0;
+        `;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), (dur + delay) * 1000);
+      }
+      for (let i = 0; i < 18; i++) spawn();
+      setInterval(spawn, 1200);
+    })();
+
+    /* ─────────────────────────────────────────────────────
+       RESIZE
+    ───────────────────────────────────────────────────── */
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
