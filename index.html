@@ -190,6 +190,19 @@
     }
     .flavor-blob.active .blob-name { color: white; }
 
+    .wip-badge {
+      font-size: 8px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: white;
+      background: rgba(0,0,0,0.28);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px;
+      padding: 2px 7px;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
     /* ── Rotate toggle ── */
     #rotate-toggle {
       position: fixed; top: 20px; right: 20px; z-index: 50;
@@ -331,6 +344,7 @@
         accentDim: 'rgba(144,216,248,0.25)',
         bg: 'linear-gradient(175deg, #68c8f0 0%, #98dff8 28%, #c8f0ff 58%, #e8f8ff 80%, #a8e4f8 100%)',
         light: 0x80d0f8,
+        wip: true,
       },
       {
         name: 'Lemonade',
@@ -339,6 +353,7 @@
         accentDim: 'rgba(240,208,32,0.25)',
         bg: 'linear-gradient(175deg, #d8b800 0%, #f0d030 28%, #f8e878 58%, #fdf5b8 80%, #ecd020 100%)',
         light: 0xe0c818,
+        wip: true,
       },
       {
         name: 'Watermelon',
@@ -347,6 +362,7 @@
         accentDim: 'rgba(240,72,104,0.25)',
         bg: 'linear-gradient(175deg, #c02848 0%, #e85870 28%, #f8a0b0 58%, #fcd4dc 80%, #e06078 100%)',
         light: 0xd83858,
+        wip: true,
       },
     ];
 
@@ -719,6 +735,14 @@
         name.textContent = f.name;
 
         blob.append(circle, name);
+
+        if (f.wip) {
+          const badge = document.createElement('div');
+          badge.className = 'wip-badge';
+          badge.textContent = 'Work in Progress';
+          blob.appendChild(badge);
+        }
+
         blob.addEventListener('click', () => startSwitch(i));
         row.appendChild(blob);
       });
