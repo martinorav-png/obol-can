@@ -618,6 +618,7 @@
 
     function startSwitch(idx) {
       if (animPhase !== 'idle' || idx === currentIdx) return;
+      playBlobPop();
       pendingIdx = idx;
       animPhase  = 'squash';
       animStart  = performance.now();
@@ -879,6 +880,68 @@
       }
       tickAnimation();
       renderer.render(scene, camera);
+    }
+
+    /* ─────────────────────────────────────────────────────
+       AUDIO
+    ───────────────────────────────────────────────────── */
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    // Background music — starts on first user interaction
+    const bgAudio = new Audio('lease.wav');
+    bgAudio.loop   = true;
+    bgAudio.volume = 0.18;
+
+    let bgStarted = false;
+    function startBg() {
+      if (bgStarted) return;
+      bgStarted = true;
+      bgAudio.play().catch(() => {});
+    }
+    window.addEventListener('pointerdown', startBg, { once: true });
+
+    // Blob pop sound — synthesised with Web Audio API, randomly pitched each time
+    function playBlobPop() {
+      const ctx    = getAudioCtx();
+      const t      = ctx.currentTime;
+      const pitch  = 0.5 + Math.random() * 1.5; // random multiplier 0.5–2.0
+
+      // Low-pitched round thud
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220 * pitch, t);
+      osc.frequency.exponentialRampToValueAtTime(60 * pitch, t + 0.18);
+
+      gain.gain.setValueAtTime(0.55, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+      osc.start(t);
+      osc.stop(t + 0.22);
+
+      // Higher fizzy blip layered on top
+      const osc2  = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(680 * pitch, t);
+      osc2.frequency.exponentialRampToValueAtTime(200 * pitch, t + 0.12);
+
+      gain2.gain.setValueAtTime(0.18, t);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+
+      osc2.start(t);
+      osc2.stop(t + 0.14);
     }
 
     /* ─────────────────────────────────────────────────────
