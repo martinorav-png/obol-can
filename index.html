@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flavor Can</title>
+  <title>OBOL Can Viewer</title>
+  <meta name="description" content="OBOL — interactive 3D can viewer. Explore 8 flavors with full rotation and Frutiger Aero visuals.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap" rel="stylesheet">
+  <!-- Non-render-blocking font load -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap"
+        onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap" rel="stylesheet"></noscript>
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
         "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
       }
     }
@@ -65,8 +69,8 @@
 
     /* ── Brand ── */
     #brand {
-      position: fixed; top: 30px; left: 42px; z-index: 10;
-      font-size: 30px; font-weight: 700; letter-spacing: 4px;
+      position: fixed; top: clamp(16px, 2.5vh, 30px); left: clamp(20px, 3vw, 42px); z-index: 10;
+      font-size: clamp(18px, 2.2vw, 30px); font-weight: 700; letter-spacing: 4px;
       color: white;
       text-transform: uppercase;
       text-shadow: 0 2px 16px rgba(0,90,170,0.35), 0 0 40px rgba(255,255,255,0.5);
@@ -75,8 +79,8 @@
 
     /* ── Drag hint ── */
     #hint {
-      position: fixed; top: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
-      font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+      position: fixed; top: clamp(20px, 3vh, 40px); left: 50%; transform: translateX(-50%); z-index: 10;
+      font-size: clamp(9px, 0.9vw, 11px); font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
       color: rgba(255,255,255,0.6);
       text-shadow: 0 1px 6px rgba(0,70,140,0.3);
       pointer-events: none;
@@ -86,27 +90,27 @@
 
     /* ── Flavor name panel (glass card) ── */
     #flavor-display {
-      position: fixed; top: 50%; right: 44px;
+      position: fixed; top: 50%; right: clamp(16px, 2.8vw, 44px);
       transform: translateY(-50%);
       z-index: 10; text-align: right;
       background: rgba(255,255,255,0.22);
       backdrop-filter: blur(18px) saturate(180%);
       -webkit-backdrop-filter: blur(18px) saturate(180%);
       border: 1px solid rgba(255,255,255,0.55);
-      border-radius: 22px;
-      padding: 18px 26px 16px;
+      border-radius: clamp(14px, 1.8vw, 22px);
+      padding: clamp(10px, 1.5vh, 18px) clamp(14px, 1.8vw, 26px) clamp(8px, 1.3vh, 16px);
       box-shadow:
         0 8px 32px rgba(0,90,180,0.12),
         inset 0 1px 0 rgba(255,255,255,0.65),
         inset 0 -1px 0 rgba(255,255,255,0.15);
     }
     #flavor-display .fd-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 3.5px;
+      font-size: clamp(8px, 0.75vw, 10px); font-weight: 700; letter-spacing: 3.5px;
       text-transform: uppercase; color: rgba(255,255,255,0.75);
       margin-bottom: 4px;
     }
     #flavor-display .fd-name {
-      font-size: 28px; font-weight: 700;
+      font-size: clamp(16px, 2vw, 28px); font-weight: 700;
       color: white;
       text-shadow: 0 2px 10px rgba(0,70,150,0.25);
       transition: opacity 0.2s, transform 0.3s;
@@ -117,7 +121,7 @@
     #ui {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
       display: flex; flex-direction: column; align-items: center;
-      padding-bottom: 38px; gap: 0;
+      padding-bottom: clamp(12px, 2.5vh, 38px); gap: 0;
     }
 
     /* Frosted glass pill */
@@ -127,8 +131,8 @@
       -webkit-backdrop-filter: blur(20px) saturate(160%);
       border: 1px solid rgba(255,255,255,0.6);
       border-radius: 80px;
-      padding: 18px 36px 20px;
-      display: flex; flex-direction: column; align-items: center; gap: 18px;
+      padding: clamp(10px, 1.6vh, 18px) clamp(18px, 2.8vw, 36px) clamp(12px, 1.6vh, 20px);
+      display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.4vh, 18px);
       box-shadow:
         0 10px 40px rgba(0,90,180,0.14),
         inset 0 1.5px 0 rgba(255,255,255,0.7),
@@ -136,22 +140,22 @@
     }
 
     #selector-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 4px;
+      font-size: clamp(7px, 0.75vw, 10px); font-weight: 700; letter-spacing: 4px;
       text-transform: uppercase;
       color: rgba(255,255,255,0.8);
       text-shadow: 0 1px 4px rgba(0,60,130,0.2);
     }
 
-    #flavor-row { display: flex; gap: 20px; align-items: center; }
+    #flavor-row { display: flex; gap: clamp(10px, 1.4vw, 20px); align-items: center; min-height: clamp(55px, 8vh, 80px); }
 
     .flavor-blob {
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      display: flex; flex-direction: column; align-items: center; gap: clamp(4px, 0.7vh, 8px);
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
 
     /* Glossy bubble */
     .blob-circle {
-      width: 52px; height: 52px; border-radius: 50%;
+      width: clamp(34px, 4.5vh, 52px); height: clamp(34px, 4.5vh, 52px); border-radius: 50%;
       position: relative;
       transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
       will-change: transform;
@@ -182,7 +186,7 @@
     }
 
     .blob-name {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      font-size: clamp(8px, 0.8vw, 11px); font-weight: 700; letter-spacing: 0.8px;
       text-transform: uppercase;
       color: rgba(255,255,255,0.7);
       text-shadow: 0 1px 4px rgba(0,50,110,0.3);
@@ -191,23 +195,23 @@
     .flavor-blob.active .blob-name { color: white; }
 
     .wip-badge {
-      font-size: 8px; font-weight: 700; letter-spacing: 1.5px;
+      font-size: clamp(6px, 0.6vw, 8px); font-weight: 700; letter-spacing: 1.5px;
       text-transform: uppercase;
       color: white;
       background: rgba(0,0,0,0.28);
       backdrop-filter: blur(6px);
       border: 1px solid rgba(255,255,255,0.35);
       border-radius: 20px;
-      padding: 2px 7px;
+      padding: 2px clamp(4px, 0.5vw, 7px);
       margin-top: 2px;
       white-space: nowrap;
     }
 
     /* ── Rotate toggle ── */
     #rotate-toggle {
-      position: fixed; top: 20px; right: 20px; z-index: 50;
-      display: flex; align-items: center; gap: 9px;
-      padding: 10px 18px;
+      position: fixed; top: clamp(12px, 2vh, 20px); right: clamp(12px, 1.8vw, 20px); z-index: 50;
+      display: flex; align-items: center; gap: clamp(6px, 0.7vw, 9px);
+      padding: clamp(7px, 1vh, 10px) clamp(12px, 1.4vw, 18px);
       background: rgba(255,255,255,0.22);
       backdrop-filter: blur(16px) saturate(160%);
       -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -215,7 +219,7 @@
       border-radius: 40px;
       box-shadow: 0 4px 20px rgba(0,80,160,0.12), inset 0 1px 0 rgba(255,255,255,0.6);
       cursor: pointer; font-family: 'Fredoka', sans-serif;
-      font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+      font-size: clamp(10px, 0.85vw, 13px); font-weight: 700; letter-spacing: 1.5px;
       color: white; text-transform: uppercase;
       text-shadow: 0 1px 4px rgba(0,50,110,0.3);
       transition: background 0.2s, box-shadow 0.2s;
@@ -291,6 +295,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader }     from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader }    from 'three/addons/loaders/DRACOLoader.js';
     import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
 
     /* ─────────────────────────────────────────────────────
@@ -372,7 +377,7 @@
     const canvas = document.getElementById('canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -503,9 +508,9 @@
     scene.add(accentLight);
 
     /* ─────────────────────────────────────────────────────
-       LOADING COORDINATOR  (textures + GLB, 6 total)
+       LOADING COORDINATOR  — only wait for texture[0] + GLB
     ───────────────────────────────────────────────────── */
-    const TOTAL_LOADS = FLAVORS.length + 1;
+    const TOTAL_LOADS = 2; // texture[0] + GLB
     let   loadsDone   = 0;
 
     function onAssetLoaded() {
@@ -518,6 +523,9 @@
           setTimeout(() => document.getElementById('loader').remove(), 900);
         }, 300);
         initScene();
+        // Lazy-load remaining textures after scene is running
+        const idle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
+        idle(() => loadRemainingTextures());
       }
     }
 
@@ -525,18 +533,31 @@
     const texLoader = new THREE.TextureLoader();
     const textures  = new Array(FLAVORS.length).fill(null);
 
-    FLAVORS.forEach((f, i) => {
-      texLoader.load(f.file,
+    function loadTex(i, cb) {
+      texLoader.load(FLAVORS[i].file,
         tex => {
           tex.colorSpace = THREE.SRGBColorSpace;
-          tex.flipY = false;   // GLTF UVs expect flipY=false
+          tex.flipY = false;
           textures[i] = tex;
-          onAssetLoaded();
+          if (cb) cb();
         },
         undefined,
-        ()  => { console.warn('Could not load', f.file); onAssetLoaded(); }
+        () => { console.warn('Could not load', FLAVORS[i].file); if (cb) cb(); }
       );
-    });
+    }
+
+    // Load only the first texture eagerly
+    loadTex(0, onAssetLoaded);
+
+    // Load flavors 1–N one at a time after scene starts
+    function loadRemainingTextures() {
+      let i = 1;
+      function next() {
+        if (i >= FLAVORS.length) return;
+        loadTex(i++, next);
+      }
+      next();
+    }
 
     // ── GLB model ──
     let canGroup  = null;
@@ -562,9 +583,12 @@
       if (grassLoaded) return;
       grassLoaded = true;
 
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
       const gltfLoader = new GLTFLoader();
+      gltfLoader.setDRACOLoader(dracoLoader);
       gltfLoader.load(
-        'hand_painted_garden.glb',
+        'hand_painted_garden-v2.glb',
         (gltf) => {
           const grass = gltf.scene;
 
