@@ -207,6 +207,26 @@
       white-space: nowrap;
     }
 
+    /* ── Pill hide/show toggle ── */
+    #pill-toggle {
+      display: flex; align-items: center; justify-content: center;
+      width: clamp(28px, 3vw, 36px); height: clamp(28px, 3vw, 36px);
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.22);
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 50%;
+      box-shadow: 0 4px 14px rgba(0,80,160,0.12), inset 0 1px 0 rgba(255,255,255,0.6);
+      cursor: pointer; font-family: 'Fredoka', sans-serif;
+      font-size: clamp(10px, 1vw, 13px); color: white;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #pill-toggle:hover {
+      background: rgba(255,255,255,0.36);
+      transform: scale(1.1);
+    }
+
     /* ── Rotate toggle ── */
     #rotate-toggle {
       position: fixed; top: clamp(12px, 2vh, 20px); right: clamp(12px, 1.8vw, 20px); z-index: 50;
@@ -286,6 +306,14 @@
   </div>
 
   <div id="ui">
+    <button id="pill-toggle" onclick="(function(){
+      const pill = document.getElementById('flavor-pill');
+      const btn  = document.getElementById('pill-toggle');
+      const hidden = pill.style.display === 'none';
+      pill.style.display = hidden ? '' : 'none';
+      btn.textContent = hidden ? '▼' : '▲';
+      btn.title = hidden ? 'Hide flavors' : 'Show flavors';
+    })()" title="Hide flavors">▼</button>
     <div id="flavor-pill">
       <div id="selector-label">Choose your flavor</div>
       <div id="flavor-row"></div>
