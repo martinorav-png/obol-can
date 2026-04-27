@@ -924,17 +924,52 @@
             uvs[i * 2]     = 1 - (Math.atan2(z, x) / (Math.PI * 2) + 0.5); // flipped U
             uvs[i * 2 + 1] = 1 - (y - labelMinY) / labelH; // flipped V
           }
-          geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+          // ── Seam fix: duplicate vertices that straddle U=0/U=1 ──
+          const posAttr  = geo.getAttribute('position');
+          const norAttr  = geo.getAttribute('normal');
+          const expandPos = Array.from(posAttr.array);
+          const expandNor = norAttr ? Array.from(norAttr.array) : null;
+          const expandUV  = Array.from(uvs);
+          const seamDupe  = new Map(); // origIdx → newIdx with U+1
 
-          // Sort triangles: label faces first, metal faces second
+          function dupeForSeam(idx) {
+            if (seamDupe.has(idx)) return seamDupe.get(idx);
+            const ni = expandPos.length / 3;
+            expandPos.push(expandPos[idx*3], expandPos[idx*3+1], expandPos[idx*3+2]);
+            if (expandNor) expandNor.push(expandNor[idx*3], expandNor[idx*3+1], expandNor[idx*3+2]);
+            expandUV.push(expandUV[idx*2] + 1.0, expandUV[idx*2+1]);
+            seamDupe.set(idx, ni);
+            return ni;
+          }
+
+          // Sort triangles + fix seam on label faces
           const labelIdx = [], metalIdx = [];
           if (idxBuf) {
             for (let i = 0; i < idxBuf.count; i += 3) {
               const a = idxBuf.getX(i), b = idxBuf.getX(i+1), c = idxBuf.getX(i+2);
               const avgR = (radii[a] + radii[b] + radii[c]) / 3;
-              (avgR >= threshold ? labelIdx : metalIdx).push(a, b, c);
+              if (avgR >= threshold) {
+                const ua = expandUV[a*2], ub = expandUV[b*2], uc = expandUV[c*2];
+                if (Math.max(ua, ub, uc) - Math.min(ua, ub, uc) > 0.5) {
+                  // Triangle straddles seam — unwrap low-U vertices
+                  labelIdx.push(
+                    ua < 0.5 ? dupeForSeam(a) : a,
+                    ub < 0.5 ? dupeForSeam(b) : b,
+                    uc < 0.5 ? dupeForSeam(c) : c,
+                  );
+                } else {
+                  labelIdx.push(a, b, c);
+                }
+              } else {
+                metalIdx.push(a, b, c);
+              }
             }
           }
+
+          // Rebuild geometry buffers with expanded vertices
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(expandPos), 3));
+          if (expandNor) geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(expandNor), 3));
+          geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(expandUV), 2));
 
           const combined = new Uint32Array(labelIdx.length + metalIdx.length);
           combined.set(labelIdx, 0);
