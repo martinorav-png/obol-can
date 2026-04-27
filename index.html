@@ -377,7 +377,6 @@
         accentDim: 'rgba(144,216,248,0.25)',
         bg: 'linear-gradient(175deg, #68c8f0 0%, #98dff8 28%, #c8f0ff 58%, #e8f8ff 80%, #a8e4f8 100%)',
         light: 0x80d0f8,
-        wip: true,
       },
       {
         name: 'Lemonade',
@@ -386,7 +385,6 @@
         accentDim: 'rgba(240,208,32,0.25)',
         bg: 'linear-gradient(175deg, #d8b800 0%, #f0d030 28%, #f8e878 58%, #fdf5b8 80%, #ecd020 100%)',
         light: 0xe0c818,
-        wip: true,
       },
       {
         name: 'Watermelon',
@@ -395,7 +393,6 @@
         accentDim: 'rgba(240,72,104,0.25)',
         bg: 'linear-gradient(175deg, #c02848 0%, #e85870 28%, #f8a0b0 58%, #fcd4dc 80%, #e06078 100%)',
         light: 0xd83858,
-        wip: true,
       },
     ];
 
@@ -460,16 +457,77 @@
     let velX = 0,   velY = 0;
     let userInteracted = false;
 
-    const DRAG_SCALE = 0.007;
-    const DAMPING    = 0.88;
-    const AUTO_SPIN  = 0.004;
-    const MAX_TILT   = Math.PI / 4;
+    const DRAG_SCALE  = 0.007;
+    const DAMPING     = 0.88;
+    const AUTO_SPIN   = 0.004;
+    const MAX_TILT    = Math.PI / 4;
+    const IDLE_DELAY  = 5000; // ms before wind-up starts
+
+    // ── Idle auto-spin state ──
+    let idleTimer     = null;
+    let windUpPhase   = 'off'; // 'off' | 'windback' | 'spinup' | 'easedown' | 'spinning'
+    let windUpStart   = 0;
+    let idleSpinSpeed = 0;
+    const WINDBACK_DUR  = 420;
+    const SPINUP_DUR    = 280;
+    const EASEDOWN_DUR  = 1100;
+    const PEAK_SPEED    = AUTO_SPIN * 12; // how fast it spins at peak
+
+    function resetIdleTimer() {
+      clearTimeout(idleTimer);
+      windUpPhase   = 'off';
+      idleSpinSpeed = 0;
+      idleTimer = setTimeout(() => {
+        velX = 0; velY = 0;
+        windUpPhase = 'windback';
+        windUpStart = performance.now();
+      }, IDLE_DELAY);
+    }
+
+    function tickIdleSpin() {
+      if (!canGroup || rotateMode !== 'can' || isDragging) return;
+      const now = performance.now();
+
+      if (windUpPhase === 'windback') {
+        const t = Math.min((now - windUpStart) / WINDBACK_DUR, 1);
+        canGroup.rotation.y += Math.sin(t * Math.PI) * -0.004;
+        if (t >= 1) {
+          windUpPhase = 'spinup';
+          windUpStart = now;
+          idleSpinSpeed = 0;
+        }
+      } else if (windUpPhase === 'spinup') {
+        const t = Math.min((now - windUpStart) / SPINUP_DUR, 1);
+        // Ease-in quad: accelerates to peak
+        idleSpinSpeed = PEAK_SPEED * (t * t);
+        canGroup.rotation.y += idleSpinSpeed;
+        if (t >= 1) {
+          windUpPhase = 'easedown';
+          windUpStart = now;
+          idleSpinSpeed = PEAK_SPEED;
+        }
+      } else if (windUpPhase === 'easedown') {
+        const t = Math.min((now - windUpStart) / EASEDOWN_DUR, 1);
+        // Ease-out cubic: bleeds off speed back to AUTO_SPIN
+        const ease = 1 - Math.pow(1 - t, 3);
+        idleSpinSpeed = PEAK_SPEED + (AUTO_SPIN - PEAK_SPEED) * ease;
+        canGroup.rotation.y += idleSpinSpeed;
+        if (t >= 1) {
+          windUpPhase = 'spinning';
+          idleSpinSpeed = AUTO_SPIN;
+        }
+      } else if (windUpPhase === 'spinning') {
+        canGroup.rotation.y += AUTO_SPIN;
+      }
+    }
 
     renderer.domElement.addEventListener('pointerdown', (e) => {
       if (rotateMode === 'can') {
         isDragging = true;
         lastPX = e.clientX; lastPY = e.clientY;
         velX = 0; velY = 0;
+        windUpPhase = 'off';
+        resetIdleTimer();
       }
       if (!userInteracted) {
         userInteracted = true;
@@ -488,8 +546,8 @@
       canGroup.rotation.x = Math.max(-MAX_TILT, Math.min(MAX_TILT, canGroup.rotation.x + velY));
     });
 
-    window.addEventListener('pointerup',     () => { isDragging = false; });
-    window.addEventListener('pointercancel', () => { isDragging = false; });
+    window.addEventListener('pointerup',     () => { isDragging = false; resetIdleTimer(); });
+    window.addEventListener('pointercancel', () => { isDragging = false; resetIdleTimer(); });
 
     renderer.domElement.addEventListener('wheel', (e) => {
       if (rotateMode === 'can') {
@@ -909,6 +967,7 @@
       applyFlavor(0);
       buildUI();
       renderer.setAnimationLoop(renderLoop);
+      resetIdleTimer();
     }
 
     function renderLoop() {
@@ -916,12 +975,18 @@
         if (rotateMode === 'can') {
           if (!isDragging) {
             if (!userInteracted) {
+              // Before first touch — just spin
               canGroup.rotation.y += AUTO_SPIN;
             } else {
-              velX *= DAMPING;
-              velY *= DAMPING;
-              canGroup.rotation.y += velX;
-              canGroup.rotation.x = Math.max(-MAX_TILT, Math.min(MAX_TILT, canGroup.rotation.x + velY));
+              if (windUpPhase === 'off') {
+                // Coast from drag momentum
+                velX *= DAMPING;
+                velY *= DAMPING;
+                canGroup.rotation.y += velX;
+                canGroup.rotation.x = Math.max(-MAX_TILT, Math.min(MAX_TILT, canGroup.rotation.x + velY));
+              }
+              // Idle wind-up & auto-spin (takes over once windback starts)
+              tickIdleSpin();
             }
           }
         } else {
