@@ -396,6 +396,10 @@
       },
     ];
 
+    /** Bump when binaries on GitHub Pages change — avoids stale cached PNG/GLB/audio. */
+    const ASSET_VERSION = '20260513';
+    const assetUrl = (file) => `${file}?v=${ASSET_VERSION}`;
+
     /* ─────────────────────────────────────────────────────
        RENDERER
     ───────────────────────────────────────────────────── */
@@ -620,7 +624,7 @@
     const textures  = new Array(FLAVORS.length).fill(null);
 
     function loadTex(i, cb) {
-      texLoader.load(FLAVORS[i].file,
+      texLoader.load(assetUrl(FLAVORS[i].file),
         tex => {
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.flipY = false;
@@ -653,7 +657,7 @@
     let   loadedGltf  = null;
 
     gltfLoader.load(
-      'aluminium_can-_350ml.glb',
+      assetUrl('aluminium_can-_350ml.glb'),
       gltf => { loadedGltf = gltf; onAssetLoaded(); },
       undefined,
       err => { console.error('GLB load failed:', err); onAssetLoaded(); }
@@ -674,7 +678,7 @@
       const gltfLoader = new GLTFLoader();
       gltfLoader.setDRACOLoader(dracoLoader);
       gltfLoader.load(
-        'hand_painted_garden-v2.glb',
+        assetUrl('hand_painted_garden-v2.glb'),
         (gltf) => {
           const grass = gltf.scene;
 
@@ -1045,7 +1049,7 @@
     }
 
     // Background music — starts on first user interaction
-    const bgAudio = new Audio('lease.wav');
+    const bgAudio = new Audio(assetUrl('lease.wav'));
     bgAudio.loop   = true;
     bgAudio.volume = 0.18;
 
